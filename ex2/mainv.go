@@ -4,6 +4,7 @@ import (
 	"fmt"
 )
 
+
 type Human struct {
 	Name, SurName string
 }
@@ -16,16 +17,17 @@ type Person struct {
 }
 
 type Worker struct {
-	PersonInfo Person
+	PersonInfo *Person
 }
+
 
 func (h *Human) happyBday() (string, string, string){
 	return "Happy Birthday", h.Name , h.SurName
 }
 
-func (w * Worker) workerInfo() Worker {
-	i := Worker{
-		PersonInfo: Person{
+func (w Worker) workerInfo() *Worker{
+	 i := Worker{
+		PersonInfo:  &Person{
 			Name:    "Alex",
 			Age:     16,
 			SurName: "Evtushok",
@@ -33,7 +35,8 @@ func (w * Worker) workerInfo() Worker {
 			Email:   "***@gmail.com",
 		},
 	}
-	return i
+	
+	return &i
 }
 
 func main() {
@@ -43,6 +46,6 @@ func main() {
 	//-------------------------------------
 	//Info about Workers
 		i := &Worker{}
-		fmt.Println(i.workerInfo())
+		fmt.Println(i.workerInfo().PersonInfo)
 	//-------------------------------------
 }
