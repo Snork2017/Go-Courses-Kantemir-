@@ -1,112 +1,458 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
-	"html/template"
-	"io/ioutil"
-	"net/http"
+	"github.com/dgrijalva/jwt-go"
 	"golang.org/x/crypto/bcrypt"
+	"gopkg.in/mgo.v2"
+	"gopkg.in/mgo.v2/bson"
+	//"github.com/night-codes/mgo-ai"
+	"github.com/gin-gonic/gin"
+	"html/template"
+	"net/http"
+	"os"
+	"time"
+	// "github.com/gorilla/mux"
 )
 
 type Person struct {
-	Email      string
-	Password   string
-	Hash 	   string
+	//ID       uint64 `json: "id, omitempty"`
+	Email    string `bson:"email" form:"email" json:"email"`
+	Password string `bson:"password" form:"password" json:"password"`
+	Hash     string `json: "hash, omitempty"`
+	// ID
 	// Firstname  string
 	// SecondName string
 }
 
+type Admin struct {
+	//ID       uint64 `json: "id, omitempty"`
+	Email    string `bson:"email" form:"email" json:"email"`
+	Password string `bson:"password" form:"password" json:"password"`
+	Hash     string `json: "hash, omitempty"`
+	// ID
+	// Firstname  string
+	// SecondName string
+}
+
+// type Pizza struct {
+// 	// .....
+// }
+
+// type Order struct {
+// 	Pizzas []Pizza
+// 	// Pending time
+// 	name string
+// }
+
+type Collection struct {
+	C *mgo.Collection
+}
+
+type Session struct {
+	S *mgo.Session
+}
+
+type Pizza struct {
+	Name string
+	Size string
+}
+
+
+// var count uint64 = 0
+var session *mgo.Session
+var resultsPerson []Person
+var resultsAdmins []Admin
 var cachePeople = map[string]Person{}
 var tpl *template.Template
+var database string = "developer"
+var requestPizza Pizza
 
 // func init() {
 // 	tpl = template.Must(template.ParseGlob("NewSite.html"))
 // 	cachePeople["kantemir28@gmail.com"] = Person{"kantemir28@gmail.com", "kant"}
 // }
 
-func login(w http.ResponseWriter, r *http.Request) {
-	// var request Person
-	if r.Method == http.MethodPost {
-		eMail := r.FormValue("EMailLog")
-		password := r.FormValue("passwordLog")
-		user, ok := cachePeople[eMail]
-		if !ok {
-			http.Error(w, "The user is not registered!", http.StatusForbidden)
-			return
-		}
-		if user.Password != password {
-			http.Error(w, "Forbidden, password is incorrect!", http.StatusForbidden)
-			return
-		}else {
-			fmt.Fprintf(w, "%+v\n", "WELCOME TO YOUR ACCOUNT!")
-			fmt.Fprintf(w, "E-MAIL : %+v\n", eMail)
-		}
+var mySigningKey = []byte("MySeretToken")
+
+// func create(c *mgo.Collection) {
+
+// 	err := c.Insert(
+// 		&Person{Email: "Dyma@gmail.com", Password: "123", Hash: HashPassword(Password)},
+// 	)
+
+// 	if err != nil {
+// 		fmt.Println(err)
+// 	}
+
+// 	fmt.Printf("\n")
+// }
+
+func CheckAdminPassword(login, password string) (Admin, error) {
+	var admin Admin
+	collection := session.DB("developer").C("admins")
+	fmt.Printf("Login: %+v\n Password: %+v", login, password)
+	err := collection.Find(bson.M{"email": login}).One(&admin)
+	fmt.Printf("Admin %+v\n", admin)
+	if err != nil {
+		fmt.Println("CheckUserPassword() ->", err.Error())
+		return Admin{}, err
+	}
+	if CheckPasswordHash(password, admin.Hash) == true {
+		fmt.Println("CheckAdminPassword() ->", password, admin.Hash)
+		return admin, nil
+	} else {
+		return admin, fmt.Errorf("Error: Wrong password or login for this account!")
 	}
 }
 
-func signUp(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodPost {
-		eMail := r.FormValue("EMailReg")
-		password := r.FormValue("passwordReg")
-		hash, _ := HashPassword(password)
-		fmt.Println(hash)
-		match := CheckPasswordHash(password, hash)
-		fmt.Println(match)
-		cachePeople[eMail] = Person{Email : eMail, Password : password, Hash: hash}
-		fmt.Fprintf(w, "%+v\n", "User is registered succesfully!")
-		fmt.Fprintf(w, "E-MAIL : %+v\n Password : %+v\n PasswordHash: %+v\n", eMail, password, hash)
+func CheckUserPassword(login, password string) (Person, error) {
+	var person Person
+	collection := session.DB("developer").C("people")
+	fmt.Printf("Login: %+v\n Password: %+v", login, password)
+	err := collection.Find(bson.M{"email": login}).One(&person)
+	fmt.Printf("Person %+v\n", person)
+	if err != nil {
+		fmt.Println("CheckUserPassword() ->", err.Error())
+		return Person{}, err
+	}
+	if CheckPasswordHash(password, person.Hash) == true {
+		fmt.Println("CheckUserPassword() ->", password, person.Hash)
+		return person, nil
+	} else {
+		return person, fmt.Errorf("Error: Wrong password or login for this account!")
 	}
 }
 
-func IndexPage(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodGet {
+func CheckUserInDb(login, password string) (Person, error) {
+	var person Person
+	hash, err := HashPassword(password)
+	if err != nil {
+		fmt.Println("HashPassword() ->", err.Error())
+		return person, err
+	}
+	collection := session.DB("developer").C("people")
+	err = collection.Find(bson.M{"email": login}).One(&person)
+	if err != nil {
+		person := Person{
+			Email:    login,
+			Password: password,
+			Hash:     hash,
+		}
+		return person, nil
+	}
+	return Person{}, fmt.Errorf("User was not found!")
+}
+
+func CheckAdminInDb(login, password string) (Admin, error) {
+	var admin Admin
+	hash, err := HashPassword(password)
+	if err != nil {
+		fmt.Println("HashPassword() ->", err.Error())
+		return admin, err
+	}
+	collection := session.DB("developer").C("admins")
+	err = collection.Find(bson.M{"email": login}).One(&admin)
+	if err != nil {
+		admin := Admin{
+			Email:    login,
+			Password: password,
+			Hash:     hash,
+		}
+		return admin, nil
+	}
+	return Admin{}, fmt.Errorf("User was not found!")
+}
+
+func CreateToken(userName string, userPassword string) (string, error) {
+	var err error
+	//Creating Access Token
+	os.Setenv("ACCESS_SECRET", "jdnfksdmfksd") //this should be in an env file
+	atClaims := jwt.MapClaims{}
+	atClaims["authorized"] = true
+	atClaims["user_name"] = userName
+	atClaims["user_password"] = userPassword
+	atClaims["exp"] = time.Now().Add(time.Minute * 15)
+	at := jwt.NewWithClaims(jwt.SigningMethodHS256, atClaims)
+	token, err := at.SignedString([]byte(os.Getenv("ACCESS_SECRET")))
+	if err != nil {
+		return "", err
+	}
+	return token, nil
+}
+
+func readPeople(c *mgo.Collection) {
+	query := c.Find(bson.M{})
+	err := query.All(&resultsPerson)
+	if err != nil {
+		fmt.Println("query.All() ->", err)
 		return
 	}
-
-	tmpl := template.Must(template.ParseFiles("NewSite.html"))
-	if err := tmpl.Execute(w, nil); err != nil {
-		fmt.Println("main.go -> IndexPage() -> Execute(): ", err)
+	for _, value := range resultsPerson {
+		fmt.Println(value)
 	}
+
+	fmt.Printf("\n")
 }
 
-func showData(w http.ResponseWriter, r *http.Request) {
-	var data []interface{}
-	if r.URL.Path != "/showData" {
-		http.Error(w, "404 not found.", http.StatusNotFound)
+func readAdmins(c *mgo.Collection) {
+	query := c.Find(bson.M{})
+	err := query.All(&resultsAdmins)
+	if err != nil {
+		fmt.Println("query.All() ->", err)
 		return
 	}
-	if r.Header.Get("content-type") == "application/json" {
-		body, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			fmt.Println(err.Error())
-		}
-		err = json.Unmarshal(body, &data)
-		if err != nil {
-			fmt.Println(err.Error())
-		}
-		for _, v := range data {
-			fmt.Println(v)
-		}
+	for _, value := range resultsAdmins {
+		fmt.Println(value)
 	}
+
+	fmt.Printf("\n")
+}
+
+func bootstrapPeople(s *mgo.Session) *mgo.Collection {
+	s.DB(database).DropDatabase()
+	c := s.DB(database).C("people")
+	index := mgo.Index{
+		Key:        []string{"email"},
+		Unique:     true,
+		Background: true,
+	}
+	err := c.EnsureIndex(index)
+	if err != nil {
+		fmt.Println("EnsureIndex() ->", err.Error())
+		return nil
+	}
+
+	return c
+}
+
+func bootstrapAdmins(s *mgo.Session) *mgo.Collection {
+	s.DB(database).DropDatabase()
+	c := s.DB(database).C("admins")
+	index := mgo.Index{
+		Key:        []string{"email"},
+		Unique:     true,
+		Background: true,
+	}
+	err := c.EnsureIndex(index)
+	if err != nil {
+		fmt.Println("EnsureIndex() ->", err.Error())
+		return nil
+	}
+
+	return c
 }
 
 func HashPassword(password string) (string, error) {
-    bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
-    return string(bytes), err
+	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
+	return string(bytes), err
 }
 
 func CheckPasswordHash(password, hash string) bool {
-    err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-    return err == nil
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	return err == nil
 }
+
+func loginAdmin(c *gin.Context) {
+	c.Request.ParseForm()
+	eMail := c.PostForm("EMailLog")
+	password := c.PostForm("passwordLog")
+	token, err := CreateToken(eMail, password)
+	if err != nil {
+		token = "nil"
+		fmt.Println("CreateToken() ->", err.Error())
+		return
+	} else {
+		fmt.Println(http.StatusOK, "Token: %+v\n", token)
+	}
+	admin, err := CheckAdminPassword(eMail, password)
+	if err != nil {
+		token = "nil"
+		c.HTML(http.StatusForbidden, "GG: %+v\n", err.Error())
+		return
+	} else {
+		fmt.Println(http.StatusOK, "Admin: %+v\n", admin)
+		// cookie, err := c.Cookie("token")
+		// if err != nil {
+		// c.SetCookie("token", token, 3600, "/", "localhost", false, false)
+		c.HTML(http.StatusOK, "accountAdmin.html", gin.H{
+			"email": eMail,
+			"token": token,
+			"admin": admin,
+		})
+		// c.String(http.StatusOK, "Cookie: %+v\n", cookie)
+		// }
+	}
+
+}
+
+func loginUser(c *gin.Context) {
+	c.Request.ParseForm()
+	eMail := c.PostForm("EMailLog")
+	password := c.PostForm("passwordLog")
+	token, err := CreateToken(eMail, password)
+	if err != nil {
+		token = "nil"
+		fmt.Println("CreateToken() ->", err.Error())
+		return
+	} else {
+		fmt.Println(http.StatusOK, "Token: %+v\n", token)
+	}
+	person, err := CheckUserPassword(eMail, password)
+	if err != nil {
+		token = "nil"
+		c.HTML(http.StatusForbidden, "GG: %+v\n", err.Error())
+		return
+	} else {
+		fmt.Println(http.StatusOK, "Person: %+v\n", person)
+		// cookie, err := c.Cookie("token")
+		// if err != nil {
+		// c.SetCookie("token", token, 3600, "/", "localhost", false, false)
+		c.HTML(http.StatusOK, "accountUser.html", gin.H{
+			"email":  eMail,
+			"token":  token,
+			"person": person,
+		})
+		// c.String(http.StatusOK, "Cookie: %+v\n", cookie)
+		// }
+	}
+}
+
+func (people *Collection) signUpUsers(c *gin.Context) {
+	c.Request.ParseForm()
+	// var person Person
+	p := people.C
+	eMail := c.PostForm("EMailReg")
+	password := c.PostForm("passwordReg")
+	user, err := CheckUserInDb(eMail, password)
+	if err != nil {
+		c.String(http.StatusForbidden, "User is already exist!", err.Error())
+		return
+	} else {
+		fmt.Println("CheckUserInDb() ->", user)
+	}
+	hash, _ := HashPassword(password)
+	fmt.Println(hash)
+	match := CheckPasswordHash(password, hash)
+	fmt.Println(match)
+	err = p.Insert(
+		&Person{Email: eMail, Password: password, Hash: hash},
+	)
+	if err != nil {
+		fmt.Println(err)
+		return
+	} else {
+		fmt.Println("ok!")
+	}
+	c.String(http.StatusOK, "%+v\n", "User is registered succesfully!")
+	c.String(http.StatusOK, "E-MAIL : %+v\n Password : %+v\n PasswordHash: %+v\n", eMail, password, hash)
+	readPeople(p)
+}
+
+func (people *Collection) signUpAdmins(c *gin.Context) {
+	c.Request.ParseForm()
+	// var person Person
+	p := people.C
+	eMail := c.PostForm("EMailReg")
+	password := c.PostForm("passwordReg")
+	admin, err := CheckAdminInDb(eMail, password)
+	if err != nil {
+		c.String(http.StatusForbidden, "Admin is already exist!", err.Error())
+		return
+	} else {
+		fmt.Println("CheckAdminInDb() ->", admin)
+	}
+	hash, _ := HashPassword(password)
+	fmt.Println(hash)
+	match := CheckPasswordHash(password, hash)
+	fmt.Println(match)
+	err = p.Insert(
+		&Admin{Email: eMail, Password: password, Hash: hash},
+	)
+	if err != nil {
+		fmt.Println(err)
+		return
+	} else {
+		fmt.Println("ok!")
+	}
+	c.String(http.StatusOK, "%+v\n", "Admin is registered succesfully!")
+	c.String(http.StatusOK, "E-MAIL : %+v\n Password : %+v\n PasswordHash: %+v\n", eMail, password, hash)
+	readAdmins(p)
+}
+
+func showData(c *gin.Context) {
+	var data interface{}
+	c.BindJSON(&data)
+	c.JSON(200, data)
+	fmt.Println("DATA", data)
+}
+
+func orderPizza(c *gin.Context){
+	err := c.BindJSON(&requestPizza)
+	if err != nil {
+		fmt.Println("orderPizza() ->", err.Error())
+		return
+	}
+	fmt.Println("orderPizza ->", requestPizza)
+}
+
 func main() {
-	http.HandleFunc("/signUp", signUp)
-	http.HandleFunc("/login", login)
-	http.HandleFunc("/", IndexPage)
-	http.HandleFunc("/showData", showData)
-	fmt.Println("Server is listening...")
-	if err := http.ListenAndServe(":8180", nil); err != nil {
-		fmt.Println("ListenAndServe(): ", err)
+	var err error
+	session, err = mgo.Dial("mongodb://localhost:27017/" + database)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	// Cleanup
+	defer session.Close()
+	var cAdmins = bootstrapAdmins(session)
+	var cPeople = bootstrapPeople(session)
+	admins := &Collection{C: cAdmins}
+	people := &Collection{C: cPeople}
+	readPeople(cPeople)
+	readAdmins(cAdmins)
+	r := gin.Default()
+	r.LoadHTMLGlob("templates/*.html")
+	r.Static("/user/css", "./templates")
+	r.Static("./css", "./templates")
+	r.GET("/page", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "page.html", gin.H{
+			"title": "test",
+		})
+	})
+	r.POST("/showData", showData)
+	routeAdmins := r.Group("/admin")
+	{
+		routeAdmins.GET("/", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "Admin.html", gin.H{
+				"title": "test",
+			})
+		})
+		routeAdmins.POST("/signUp", admins.signUpAdmins)
+		routeAdmins.POST("/login", loginAdmin)
+	}
+	routeUser := r.Group("/user")
+	{
+		routeUser.GET("/", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "User.html", gin.H{
+				"title": "test",
+			})
+		})
+		routeUser.GET("/pizza", func(c *gin.Context) {
+			c.HTML(http.StatusOK, "pizza.html", gin.H{
+				"title": "test",
+			})
+		})
+		routeUser.GET("/getPizza", func(c *gin.Context) {
+			c.JSON(200, requestPizza)
+			fmt.Println("routerUser.GET() ->", requestPizza)
+		})
+		routeUser.POST("/orderPizza", orderPizza)
+		routeUser.POST("/signUp", people.signUpUsers)
+		routeUser.POST("/login", loginUser)
+	}
+	err1 := r.Run()
+	if err1 != nil {
+		panic(err1)
 	}
 }

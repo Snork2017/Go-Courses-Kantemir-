@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <title></title>
+</head>
+<body>
+    <div>
+        <input type="text" name="name" id="name">
+        <input type="text" name="size" id="size">
+        <button onclick="orderPizza()">orderPizza</button>
+    </div>
+</body>
+</html>
+<script>
+    function orderPizza() {
+        var data = {    
+            "name": $('#name').val(),  
+            "size": $('#size').val(),  
+        }
+        $.ajax({   
+                url: '/user/orderPizza',    
+                type: 'POST', 
+                data: JSON.stringify(data),
+                contentType: "application/javascript; charset=utf-8",  
+                dataType: "json", 
+                success : function(data) {
+                    console.log(data.name)
+                    console.log(data.size)
+                },
+            }); 
+        console.log(data)
+    }
+</script>

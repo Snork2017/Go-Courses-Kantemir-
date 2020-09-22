@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script> 
+    <link rel="stylesheet" href="http://dimsemenov.com/plugins/magnific-popup/site-assets/all.min.css?v=0.9.9">
+	<title></title>
+</head>
+<body>
+	<div>
+		<p>ПРИВЕТ {{.email}}</p>
+	<div>
+	<form action="/user/pizza" method="GET">
+		<button>Pizza</button>
+	</form>
+	<div>
+		<button class="popup-with-form1" onclick="getPizza()" href="#test-form1">Корзина</button>
+        <div id="test-form1" class="white-popup-block mfp-hide"> 
+            <div id="brd" >
+                
+            </div>
+        </div>
+	</div>
+</body>
+<script src="http://dimsemenov.com/plugins/magnific-popup/dist/jquery.magnific-popup.min.js?v=0.9.9"></script>
+</html>
+
+<script>
+    function getPizza() {
+        $.get( "/user/getPizza", function( data ) {
+            jQuery.each(data, function() {    
+                $('#brd').append("<div >"+data.Name+"</div>");
+            });
+            console.log(data)
+        })
+    }
+    //pop up
+    $(document).ready(function() {
+        $('.close').click(function() {
+            $.magnificPopup.close();
+        });
+    });
+
+    $(document).ready(function() {
+
+        $('.popup-with-form').magnificPopup({
+            type: 'inline',
+            preloader: false,
+            focus: '#E-Mail',
+            callbacks: {
+                beforeOpen: function() {
+                    if($(window).width() < 700) {
+                        this.st.focus = false;
+                    } else {
+                        this.st.focus = '#E-Mail';
+                    }
+                }
+            }
+        });
+    });
+
+//     function lastRegisteredUser() {
+//         var data = {    
+//             "eMail": $('#EMailReg').val(),
+//             "password": $('#passwordReg').val(), 
+//         }; 
+//         console.log(data)
+//         $.ajax({   
+//             type: "POST",   
+//             url: "/showUsers",   
+//             data: JSON.stringify(data), 
+//             contentType: "application/javascript; charset=utf-8",   
+//             dataType: "json",          
+//     });
+// } 
+
+    $('.popup-with-form1').magnificPopup({
+        type: 'inline',
+        preloader: false,
+        focus: '#E-Mail',
+        callbacks: {
+            beforeOpen: function() {
+                if($(window).width() < 700) {
+                    this.st.focus = false;
+                } else {
+                    this.st.focus = '#E-Mail';
+                }
+            }
+        }
+    });
+    
+    </script>   

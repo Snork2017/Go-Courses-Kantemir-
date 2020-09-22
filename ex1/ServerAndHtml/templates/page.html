@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script> 
+	<meta charset="utf-8">
+	<title>Page</title>
+</head>
+<body>
+	<form action="/user" method="GET">
+		<button>UserPage</button>
+	</form>
+	<form action="/admin" method="GET">
+		<button>AdminPage</button>
+	</form>
+	<div>
+		<div>
+            <input type="text" name="name" id="name">
+            <button onclick="sendData()">ShowData</button>
+        </div>
+       <div id="brd">
+       		
+       </div>
+    </div>
+</body>
+</html>
+
+<script>
+	function sendData() {
+        var data = {    
+            "name": $('#name').val(),  
+        }
+        $.ajax({   
+                url: '/showData',    
+                type: 'POST', 
+                data: JSON.stringify(data),
+                contentType: "application/javascript; charset=utf-8",  
+                dataType: "json", 
+                success : function(data) {
+                    $('#brd').append("<div>"+ data.name +"</div>"); 
+                },
+            }); 
+        console.log(data)
+    }
+</script>
