@@ -15,9 +15,11 @@
 	<div>
 		<button class="popup-with-form1" onclick="getPizza()" href="#test-form1">Корзина</button>
         <div id="test-form1" class="white-popup-block mfp-hide"> 
-            <div id="brd" >
+            <table>
+                <tbody id= "brd">
                 
-            </div>
+                </tbody>
+            </table>
         </div>
 	</div>
 </body>
@@ -26,12 +28,14 @@
 
 <script>
     function getPizza() {
+        
         $.get( "/user/getPizza", function( data ) {
-            jQuery.each(data, function() {    
-                $('#brd').append("<div >"+data.Name+"</div>");
+            $('#brd').empty()
+            $.each(data, function(k)  {
+                $("#brd").append("<tr><td>"+data[k].name+"<td><br/><td>"+data[k].size+"<td><br/></tr>");
             });
-            console.log(data)
-        })
+            console.log(data);
+        });
     }
     //pop up
     $(document).ready(function() {

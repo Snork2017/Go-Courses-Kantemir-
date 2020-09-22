@@ -35,6 +35,11 @@ type Admin struct {
 	// SecondName string
 }
 
+type Pizza struct {
+	Name string `bson:"name" form:"name" json:"name"`
+	Size string `bson:"size" form:"size" json:"size"`
+}
+
 // type Pizza struct {
 // 	// .....
 // }
@@ -53,11 +58,6 @@ type Session struct {
 	S *mgo.Session
 }
 
-type Pizza struct {
-	Name string
-	Size string
-}
-
 
 // var count uint64 = 0
 var session *mgo.Session
@@ -66,6 +66,7 @@ var resultsAdmins []Admin
 var cachePeople = map[string]Person{}
 var tpl *template.Template
 var database string = "developer"
+var resultsPizzas []Pizza
 var requestPizza Pizza
 
 // func init() {
@@ -209,6 +210,38 @@ func readAdmins(c *mgo.Collection) {
 	fmt.Printf("\n")
 }
 
+func readPizzas(c *mgo.Collection) {
+	query := c.Find(bson.M{})
+	err := query.All(&resultsPizzas)
+	if err != nil {
+		fmt.Println("query.All() ->", err)
+		return
+	}
+	for _, value := range resultsPizzas {
+		fmt.Println(value)
+	}
+
+	fmt.Printf("\n")
+	return
+}
+
+func bootstrapPizza(s *mgo.Session) *mgo.Collection {
+	s.DB(database).DropDatabase()
+	c := s.DB(database).C("pizza")
+	index := mgo.Index{
+		Key:        []string{"name"},
+		Unique:     true,
+		Background: true,
+	}
+	err := c.EnsureIndex(index)
+	if err != nil {
+		fmt.Println("EnsureIndex() ->", err.Error())
+		return nil
+	}
+
+	return c
+}
+
 func bootstrapPeople(s *mgo.Session) *mgo.Collection {
 	s.DB(database).DropDatabase()
 	c := s.DB(database).C("people")
@@ -303,20 +336,24 @@ func loginUser(c *gin.Context) {
 		token = "nil"
 		c.HTML(http.StatusForbidden, "GG: %+v\n", err.Error())
 		return
-	} else {
-		fmt.Println(http.StatusOK, "Person: %+v\n", person)
-		// cookie, err := c.Cookie("token")
-		// if err != nil {
-		// c.SetCookie("token", token, 3600, "/", "localhost", false, false)
-		c.HTML(http.StatusOK, "accountUser.html", gin.H{
+	} 
+	fmt.Println(http.StatusOK, "Person: %+v\n", person)
+	c.SetCookie("token", token, 3600, "/", "localhost", false, false)
+	c.HTML(http.StatusOK, "accountUser.html", gin.H{
 			"email":  eMail,
-			"token":  token,
-			"person": person,
-		})
+	})
 		// c.String(http.StatusOK, "Cookie: %+v\n", cookie)
 		// }
-	}
 }
+
+// func (VS *DB) logout(c *gin.Context) {
+// 	// Clear the cookie
+// 	c.SetCookie(projectName, "", -1, "", "", false, true)
+// 	c.Set("isLoggedIn", false)
+// 	// Redirect to the home page
+// 	fmt.Println("Redirecting to /log-in from logout")
+// 	c.Redirect(http.StatusFound, "/")
+// }
 
 func (people *Collection) signUpUsers(c *gin.Context) {
 	c.Request.ParseForm()
@@ -387,13 +424,23 @@ func showData(c *gin.Context) {
 	fmt.Println("DATA", data)
 }
 
-func orderPizza(c *gin.Context){
+func (pizza *Collection) orderPizza(c *gin.Context){
+	p := pizza.C
 	err := c.BindJSON(&requestPizza)
 	if err != nil {
 		fmt.Println("orderPizza() ->", err.Error())
 		return
 	}
-	fmt.Println("orderPizza ->", requestPizza)
+	err = p.Insert(
+		&Pizza{Name: requestPizza.Name, Size: requestPizza.Size},
+	)
+	if err != nil {
+		fmt.Println(err)
+		return
+	} else {
+		fmt.Println("ok!", requestPizza.Name, requestPizza.Size)
+	}
+	resultsPizzas = append(resultsPizzas, requestPizza)
 }
 
 func main() {
@@ -407,11 +454,15 @@ func main() {
 	defer session.Close()
 	var cAdmins = bootstrapAdmins(session)
 	var cPeople = bootstrapPeople(session)
+	var cPizza 	= bootstrapPizza(session)
 	admins := &Collection{C: cAdmins}
 	people := &Collection{C: cPeople}
+	pizza  := &Collection{C: cPizza}
 	readPeople(cPeople)
 	readAdmins(cAdmins)
+	readPizzas(cPizza)
 	r := gin.Default()
+	r.Use(gin.Recovery(), gin.Logger())
 	r.LoadHTMLGlob("templates/*.html")
 	r.Static("/user/css", "./templates")
 	r.Static("./css", "./templates")
@@ -444,10 +495,10 @@ func main() {
 			})
 		})
 		routeUser.GET("/getPizza", func(c *gin.Context) {
-			c.JSON(200, requestPizza)
+			c.JSON(200, resultsPizzas)
 			fmt.Println("routerUser.GET() ->", requestPizza)
 		})
-		routeUser.POST("/orderPizza", orderPizza)
+		routeUser.POST("/orderPizza", pizza.orderPizza)
 		routeUser.POST("/signUp", people.signUpUsers)
 		routeUser.POST("/login", loginUser)
 	}
