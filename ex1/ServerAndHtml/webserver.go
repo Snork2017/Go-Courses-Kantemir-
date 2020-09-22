@@ -346,15 +346,6 @@ func loginUser(c *gin.Context) {
 		// }
 }
 
-// func (VS *DB) logout(c *gin.Context) {
-// 	// Clear the cookie
-// 	c.SetCookie(projectName, "", -1, "", "", false, true)
-// 	c.Set("isLoggedIn", false)
-// 	// Redirect to the home page
-// 	fmt.Println("Redirecting to /log-in from logout")
-// 	c.Redirect(http.StatusFound, "/")
-// }
-
 func (people *Collection) signUpUsers(c *gin.Context) {
 	c.Request.ParseForm()
 	// var person Person
@@ -443,6 +434,26 @@ func (pizza *Collection) orderPizza(c *gin.Context){
 	resultsPizzas = append(resultsPizzas, requestPizza)
 }
 
+func CheckTokenValidation(c *gin.Context) {
+  _, err := c.Cookie("token")
+  if err != nil {
+    c.HTML(200, "/user", gin.H{
+      "title": "authorisation", //IGNORE THIS
+    })
+    return
+  }
+  return
+}
+
+func logout(c *gin.Context) {
+	// Clear the cookie
+	c.SetCookie("token", "", -1, "", "", false, true)
+	c.Set("isLoggedIn", false)
+	// Redirect to the home page
+	fmt.Println("Redirecting to /log-in from logout")
+	c.Redirect(http.StatusFound, "/")
+}
+
 func main() {
 	var err error
 	session, err = mgo.Dial("mongodb://localhost:27017/" + database)
@@ -489,6 +500,10 @@ func main() {
 				"title": "test",
 			})
 		})
+		routeUser.POST("/signUp", people.signUpUsers)
+		routeUser.POST("/login", loginUser)
+		routeUser.Use(CheckTokenValidation)
+		routeUser.GET("/logOut", logout)
 		routeUser.GET("/pizza", func(c *gin.Context) {
 			c.HTML(http.StatusOK, "pizza.html", gin.H{
 				"title": "test",
@@ -499,8 +514,6 @@ func main() {
 			fmt.Println("routerUser.GET() ->", requestPizza)
 		})
 		routeUser.POST("/orderPizza", pizza.orderPizza)
-		routeUser.POST("/signUp", people.signUpUsers)
-		routeUser.POST("/login", loginUser)
 	}
 	err1 := r.Run()
 	if err1 != nil {

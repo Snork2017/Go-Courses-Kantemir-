@@ -12,6 +12,9 @@
 	<form action="/user/pizza" method="GET">
 		<button>Pizza</button>
 	</form>
+    <form action="/user/">  
+        <button onclick="logOut()">Log Out</button>
+    </form>
 	<div>
 		<button class="popup-with-form1" onclick="getPizza()" href="#test-form1">Корзина</button>
         <div id="test-form1" class="white-popup-block mfp-hide"> 
@@ -27,8 +30,10 @@
 </html>
 
 <script>
-    function getPizza() {
-        
+    function logOut() {
+        $.get( "/user/logOut")
+    }
+    function getPizza() {   
         $.get( "/user/getPizza", function( data ) {
             $('#brd').empty()
             $.each(data, function(k)  {
