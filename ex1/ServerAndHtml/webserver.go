@@ -40,6 +40,95 @@ type Pizza struct {
 	Size string `bson:"size" form:"size" json:"size"`
 }
 
+type Order struct {
+	Pizzas []Pizza    `bson:"pizzas" form:"pizzas" json:"pizzas"`
+	OwnerEmail string `bson:"ownerEmail" form:"ownerEmail" json:"ownerEmail"`
+}
+
+
+
+func readPizza(c *mgo.Collection, emailCookie string) {
+	order = Order{}
+	filterPizza := make(map[string]interface{})
+	filterPizza["ownerEmail"] = emailCookie
+	query := c.Find(filterPizza)
+	err := query.One(&order)
+	if err != nil {
+		fmt.Println("query.All() ->", err)
+		return
+	}
+	for _, value := range order.Pizzas {
+		fmt.Println(value)
+	}
+	fmt.Printf("\n")
+}
+
+func (pizza *Collection) pizzaOrder(c *gin.Context){
+	p := pizza.C
+	emailCookie, err := c.Cookie("email")
+	if err != nil {
+		fmt.Println("emailCookie() ->", err.Error())
+		return 
+	} else {
+		fmt.Println("emailCookie() -> c.Cookie() -> ", emailCookie)
+	}
+	err = c.BindJSON(&requestPizza)
+	if err != nil {
+		fmt.Println("orderPizza() ->", err.Error())
+		return
+	}
+	filterPizza := make(map[string]interface{})
+	filterPizza["ownerEmail"] = emailCookie
+	err = p.Find(filterPizza).One(&order)
+	if err != nil {
+		fmt.Println("c.FIND().ONE() ->", err.Error())
+		orderPizza := Pizza{
+			Name: requestPizza.Name,
+			Size: requestPizza.Size,
+		}
+		pizzas := []Pizza{}
+		order.OwnerEmail = emailCookie
+		pizzas = append(pizzas, orderPizza)
+		order.Pizzas = pizzas
+		err = p.Insert(
+			&order,
+		)
+		if err != nil {
+			fmt.Println("c.Insert{order} ->", err.Error())
+			return 
+		}
+	} else {
+		orderPizza := Pizza{
+			Name: requestPizza.Name,
+			Size: requestPizza.Size,
+		}
+		ordPizzas := order.Pizzas
+		ordPizzas = append(ordPizzas, orderPizza)
+		change := bson.M{
+			"$set": bson.M{
+				"pizzas": ordPizzas,
+			},
+		}
+
+		err := p.Update(filterPizza, change)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		readPizza(p, emailCookie)
+		fmt.Println("ORDER", order.OwnerEmail)
+		fmt.Println("ORDER", ordPizzas)
+	}
+	
+	if err != nil {
+		fmt.Println(err)
+		return
+	} else {
+		fmt.Println("ok!", requestPizza.Name, requestPizza.Size)
+	}
+	resultsPizzas = append(resultsPizzas, requestPizza)
+}
+
 // type Pizza struct {
 // 	// .....
 // }
@@ -68,6 +157,8 @@ var tpl *template.Template
 var database string = "developer"
 var resultsPizzas []Pizza
 var requestPizza Pizza
+var resultsOrder []Order
+var order Order
 
 // func init() {
 // 	tpl = template.Must(template.ParseGlob("NewSite.html"))
@@ -196,6 +287,20 @@ func readPeople(c *mgo.Collection) {
 	fmt.Printf("\n")
 }
 
+func readOrder(c *mgo.Collection) {
+	query := c.Find(bson.M{})
+	err := query.All(&resultsOrder)
+	if err != nil {
+		fmt.Println("query.All() ->", err)
+		return
+	}
+	for _, value := range resultsOrder {
+		fmt.Println(value)
+	}
+
+	fmt.Printf("\n")
+}
+
 func readAdmins(c *mgo.Collection) {
 	query := c.Find(bson.M{})
 	err := query.All(&resultsAdmins)
@@ -222,7 +327,6 @@ func readPizzas(c *mgo.Collection) {
 	}
 
 	fmt.Printf("\n")
-	return
 }
 
 func bootstrapPizza(s *mgo.Session) *mgo.Collection {
@@ -230,6 +334,23 @@ func bootstrapPizza(s *mgo.Session) *mgo.Collection {
 	c := s.DB(database).C("pizza")
 	index := mgo.Index{
 		Key:        []string{"name"},
+		Unique:     true,
+		Background: true,
+	}
+	err := c.EnsureIndex(index)
+	if err != nil {
+		fmt.Println("EnsureIndex() ->", err.Error())
+		return nil
+	}
+
+	return c
+}
+
+func bootstrapOrder(s *mgo.Session) *mgo.Collection {
+	s.DB(database).DropDatabase()
+	c := s.DB(database).C("order")
+	index := mgo.Index{
+		Key:        []string{"pizzas"},
 		Unique:     true,
 		Background: true,
 	}
@@ -319,8 +440,9 @@ func loginAdmin(c *gin.Context) {
 
 }
 
-func loginUser(c *gin.Context) {
+func (people *Collection)loginUser(c *gin.Context) {
 	c.Request.ParseForm()
+	p := people.C
 	eMail := c.PostForm("EMailLog")
 	password := c.PostForm("passwordLog")
 	token, err := CreateToken(eMail, password)
@@ -339,9 +461,11 @@ func loginUser(c *gin.Context) {
 	} 
 	fmt.Println(http.StatusOK, "Person: %+v\n", person)
 	c.SetCookie("token", token, 3600, "/", "localhost", false, false)
+	c.SetCookie("email", eMail, 3600, "/", "localhost", false, false)
 	c.HTML(http.StatusOK, "accountUser.html", gin.H{
 			"email":  eMail,
 	})
+	readPizza(p, eMail)
 		// c.String(http.StatusOK, "Cookie: %+v\n", cookie)
 		// }
 }
@@ -415,32 +539,16 @@ func showData(c *gin.Context) {
 	fmt.Println("DATA", data)
 }
 
-func (pizza *Collection) orderPizza(c *gin.Context){
-	p := pizza.C
-	err := c.BindJSON(&requestPizza)
-	if err != nil {
-		fmt.Println("orderPizza() ->", err.Error())
-		return
-	}
-	err = p.Insert(
-		&Pizza{Name: requestPizza.Name, Size: requestPizza.Size},
-	)
-	if err != nil {
-		fmt.Println(err)
-		return
-	} else {
-		fmt.Println("ok!", requestPizza.Name, requestPizza.Size)
-	}
-	resultsPizzas = append(resultsPizzas, requestPizza)
-}
-
 func CheckTokenValidation(c *gin.Context) {
-  _, err := c.Cookie("token")
+  token, err := c.Cookie("token")
   if err != nil {
+  	fmt.Println("c.Cookie() ->", err.Error())
     c.HTML(200, "/user", gin.H{
       "title": "authorisation", //IGNORE THIS
     })
     return
+  }else {
+  	fmt.Println("c.Cookie() ->", token)
   }
   return
 }
@@ -465,15 +573,16 @@ func main() {
 	defer session.Close()
 	var cAdmins = bootstrapAdmins(session)
 	var cPeople = bootstrapPeople(session)
-	var cPizza 	= bootstrapPizza(session)
+	// var cPizza 	= bootstrapPizza(session)
+	var cOrder 	= bootstrapOrder(session)
 	admins := &Collection{C: cAdmins}
 	people := &Collection{C: cPeople}
-	pizza  := &Collection{C: cPizza}
+	orders  := &Collection{C: cOrder}
 	readPeople(cPeople)
 	readAdmins(cAdmins)
-	readPizzas(cPizza)
+	readOrder(cOrder)
+	// readPizzas(cPizza)
 	r := gin.Default()
-	r.Use(gin.Recovery(), gin.Logger())
 	r.LoadHTMLGlob("templates/*.html")
 	r.Static("/user/css", "./templates")
 	r.Static("./css", "./templates")
@@ -483,6 +592,7 @@ func main() {
 		})
 	})
 	r.POST("/showData", showData)
+	/////////////////////////////////////// ROUTE ADMIN/////////////////////////////////////////////////
 	routeAdmins := r.Group("/admin")
 	{
 		routeAdmins.GET("/", func(c *gin.Context) {
@@ -493,6 +603,7 @@ func main() {
 		routeAdmins.POST("/signUp", admins.signUpAdmins)
 		routeAdmins.POST("/login", loginAdmin)
 	}
+	/////////////////////////////////////// ROUTE USER/////////////////////////////////////////////////
 	routeUser := r.Group("/user")
 	{
 		routeUser.GET("/", func(c *gin.Context) {
@@ -501,20 +612,24 @@ func main() {
 			})
 		})
 		routeUser.POST("/signUp", people.signUpUsers)
-		routeUser.POST("/login", loginUser)
+		routeUser.POST("/login", orders.loginUser)
 		routeUser.Use(CheckTokenValidation)
 		routeUser.GET("/logOut", logout)
 		routeUser.GET("/pizza", func(c *gin.Context) {
+
 			c.HTML(http.StatusOK, "pizza.html", gin.H{
 				"title": "test",
 			})
 		})
 		routeUser.GET("/getPizza", func(c *gin.Context) {
-			c.JSON(200, resultsPizzas)
-			fmt.Println("routerUser.GET() ->", requestPizza)
+			orderPizzas := order.Pizzas
+				c.JSON(200, orderPizzas)
+				fmt.Println("routerUser.GET() ->", orderPizzas)
+
 		})
-		routeUser.POST("/orderPizza", pizza.orderPizza)
+		routeUser.POST("/orderPizza", orders.pizzaOrder)
 	}
+	/////////////////////////////////////////////////////////////////////////////////////////////////////
 	err1 := r.Run()
 	if err1 != nil {
 		panic(err1)
