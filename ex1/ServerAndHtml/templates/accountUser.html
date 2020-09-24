@@ -36,7 +36,7 @@
     function getPizza() {   
         $.get( "/user/getPizza", function( data ) {
             $('#brd').empty()
-            $.each(data, function(k)  {
+            $.each(data, function(k,v)  {
                 $("#brd").append("<tr><td>"+data[k].name+"<td><br/><td>"+data[k].size+"<td><br/></tr>");
             });
             console.log(data);
@@ -59,28 +59,11 @@
                 beforeOpen: function() {
                     if($(window).width() < 700) {
                         this.st.focus = false;
-                    } else {
-                        this.st.focus = '#E-Mail';
-                    }
+                    } 
                 }
             }
         });
     });
-
-//     function lastRegisteredUser() {
-//         var data = {    
-//             "eMail": $('#EMailReg').val(),
-//             "password": $('#passwordReg').val(), 
-//         }; 
-//         console.log(data)
-//         $.ajax({   
-//             type: "POST",   
-//             url: "/showUsers",   
-//             data: JSON.stringify(data), 
-//             contentType: "application/javascript; charset=utf-8",   
-//             dataType: "json",          
-//     });
-// } 
 
     $('.popup-with-form1').magnificPopup({
         type: 'inline',

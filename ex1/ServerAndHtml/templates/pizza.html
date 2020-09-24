@@ -2,33 +2,125 @@
 <html>
 <head>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <link rel="stylesheet" href="http://dimsemenov.com/plugins/magnific-popup/site-assets/all.min.css?v=0.9.9">
     <title></title>
 </head>
 <body>
+    <form action="/user/">  
+        <button onclick="logOut()">Log Out</button>
+    </form>
+     <div>
+        <button class="popup-with-form1" onclick="getPizza()" href="#test-form1">Корзина</button>
+        <div id="test-form1" class="white-popup-block mfp-hide"> 
+            <table>
+                <tbody id= "brd">
+                
+                </tbody>
+            </table>
+        </div>
+    </div>
     <div>
-        <input type="text" name="name" id="name">
-        <input type="text" name="size" id="size">
-        <button onclick="orderPizza()">orderPizza</button>
+        <button class="popup-with-form" onclick="choosePizza()" href="#test-form">Выбрать Пиццу</button>
+        <div id="test-form" class="white-popup-block mfp-hide"> 
+            <table>
+                <tbody id= "brd1">
+                
+                </tbody>
+            </table>
+        </div>
     </div>
 </body>
 </html>
+<script src="http://dimsemenov.com/plugins/magnific-popup/dist/jquery.magnific-popup.min.js?v=0.9.9"></script>
 <script>
-    function orderPizza() {
+    function logOut() {
+        $.get( "/user/logOut")
+    }
+    function getPizza() {   
+        $.get( "/user/getPizza", function( data ) {
+            $('#brd').empty()
+            $.each(data, function(k)  {
+                $("#brd").append("<tr><td>"+data[k].name+"<td><br/><td>"+data[k].size+"<td><br/><button class='delete' data-pizza='"+data[k].name+"'><img src='https://img.icons8.com/color/16/000000/delete-sign.png'></button></tr>");
+            });
+            console.log(data);
+        });
+    }
+    $('#brd').on('click', '.delete', function() {   
+        var name = $(this).attr("data-pizza"); 
+        console.log(name)
+        $.ajax({   
+            url: '/user/pizzaDelete',    
+            type: 'DELETE', 
+            data: JSON.stringify(name), 
+            contentType: "application/json; charset=utf-8",   
+            dataType: "json",   
+            success : function(data) {
+                console.log(data.name)
+            },
+        }); 
+    });
+    function choosePizza() {   
+        $.get( "/user/choosePizzas", function( data ) {
+            $('#brd1').empty()
+            $.each(data, function(k)  {
+                $("#brd1").append("<tr><td>"+data.name+"<td><br/><td>"+data.size+"<td><br/><button class='choosePizza' data-name='"+data.name+"' data-size='"+data.size+"'>orderPizza</button></tr>");
+            });
+            console.log(data);
+        });
+    }
+    $('#brd1').on('click', '.choosePizza', function() {   
+        var name = $(this).attr("data-name"); 
+        var size = $(this).attr("data-size");
         var data = {    
-            "name": $('#name').val(),  
-            "size": $('#size').val(),  
+            "name": name,  
+            "size": size,  
         }
         $.ajax({   
                 url: '/user/orderPizza',    
                 type: 'POST', 
                 data: JSON.stringify(data),
-                contentType: "application/javascript; charset=utf-8",  
+                contentType: "application/json; charset=utf-8",  
                 dataType: "json", 
                 success : function(data) {
                     console.log(data.name)
                     console.log(data.size)
                 },
             }); 
-        console.log(data)
-    }
+        console.log(data) 
+    });
+    
+    //pop up
+    $(document).ready(function() {
+        $('.close').click(function() {
+            $.magnificPopup.close();
+        });
+    });
+
+    $(document).ready(function() {
+
+        $('.popup-with-form1').magnificPopup({
+            type: 'inline',
+            preloader: false,
+            focus: '#name',
+            callbacks: {
+                beforeOpen: function() {
+                    if($(window).width() < 700) {
+                        this.st.focus = false;
+                    }
+                }
+            }
+        });
+         $('.popup-with-form').magnificPopup({
+            type: 'inline',
+            preloader: false,
+            focus: '#name',
+            callbacks: {
+                beforeOpen: function() {
+                    if($(window).width() < 700) {
+                        this.st.focus = false;
+                    }
+                }
+            }
+        });
+    });
 </script>

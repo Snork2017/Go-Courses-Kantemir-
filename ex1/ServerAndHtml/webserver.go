@@ -35,6 +35,39 @@ type Admin struct {
 	// SecondName string
 }
 
+func (pizza *Collection)deletePizzaFromTrash(c *gin.Context) {
+	var p = pizza.C
+	var deletePizza interface{}
+	err := c.BindJSON(&deletePizza)
+	if err != nil {
+		fmt.Println("deletePizzaFromTrash() ->", err.Error())
+		return
+	}
+	fmt.Println("deletePizza  ->",	deletePizza)
+	filter := bson.M{"pizzas.name": deletePizza}
+	err = p.Remove(filter)
+
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+}
+
+
+var session *mgo.Session
+var resultsPerson []Person
+var resultsAdmins []Admin
+var cachePeople = map[string]Person{}
+var tpl *template.Template
+var database string = "developer"
+var resultsPizzas []Pizza
+var requestPizza Pizza
+var resultsOrder []Order
+var order Order
+
+var mySigningKey = []byte("MySeretToken")
+
 type Pizza struct {
 	Name string `bson:"name" form:"name" json:"name"`
 	Size string `bson:"size" form:"size" json:"size"`
@@ -149,36 +182,7 @@ type Session struct {
 
 
 // var count uint64 = 0
-var session *mgo.Session
-var resultsPerson []Person
-var resultsAdmins []Admin
-var cachePeople = map[string]Person{}
-var tpl *template.Template
-var database string = "developer"
-var resultsPizzas []Pizza
-var requestPizza Pizza
-var resultsOrder []Order
-var order Order
 
-// func init() {
-// 	tpl = template.Must(template.ParseGlob("NewSite.html"))
-// 	cachePeople["kantemir28@gmail.com"] = Person{"kantemir28@gmail.com", "kant"}
-// }
-
-var mySigningKey = []byte("MySeretToken")
-
-// func create(c *mgo.Collection) {
-
-// 	err := c.Insert(
-// 		&Person{Email: "Dyma@gmail.com", Password: "123", Hash: HashPassword(Password)},
-// 	)
-
-// 	if err != nil {
-// 		fmt.Println(err)
-// 	}
-
-// 	fmt.Printf("\n")
-// }
 
 func CheckAdminPassword(login, password string) (Admin, error) {
 	var admin Admin
@@ -330,7 +334,6 @@ func readPizzas(c *mgo.Collection) {
 }
 
 func bootstrapPizza(s *mgo.Session) *mgo.Collection {
-	s.DB(database).DropDatabase()
 	c := s.DB(database).C("pizza")
 	index := mgo.Index{
 		Key:        []string{"name"},
@@ -347,7 +350,6 @@ func bootstrapPizza(s *mgo.Session) *mgo.Collection {
 }
 
 func bootstrapOrder(s *mgo.Session) *mgo.Collection {
-	s.DB(database).DropDatabase()
 	c := s.DB(database).C("order")
 	index := mgo.Index{
 		Key:        []string{"pizzas"},
@@ -364,7 +366,6 @@ func bootstrapOrder(s *mgo.Session) *mgo.Collection {
 }
 
 func bootstrapPeople(s *mgo.Session) *mgo.Collection {
-	s.DB(database).DropDatabase()
 	c := s.DB(database).C("people")
 	index := mgo.Index{
 		Key:        []string{"email"},
@@ -381,7 +382,6 @@ func bootstrapPeople(s *mgo.Session) *mgo.Collection {
 }
 
 func bootstrapAdmins(s *mgo.Session) *mgo.Collection {
-	s.DB(database).DropDatabase()
 	c := s.DB(database).C("admins")
 	index := mgo.Index{
 		Key:        []string{"email"},
@@ -463,7 +463,7 @@ func (people *Collection)loginUser(c *gin.Context) {
 	c.SetCookie("token", token, 3600, "/", "localhost", false, false)
 	c.SetCookie("email", eMail, 3600, "/", "localhost", false, false)
 	c.HTML(http.StatusOK, "accountUser.html", gin.H{
-			"email":  eMail,
+		"email":  eMail,
 	})
 	readPizza(p, eMail)
 		// c.String(http.StatusOK, "Cookie: %+v\n", cookie)
@@ -573,15 +573,17 @@ func main() {
 	defer session.Close()
 	var cAdmins = bootstrapAdmins(session)
 	var cPeople = bootstrapPeople(session)
-	// var cPizza 	= bootstrapPizza(session)
+	var cPizza 	= bootstrapPizza(session)
 	var cOrder 	= bootstrapOrder(session)
 	admins := &Collection{C: cAdmins}
 	people := &Collection{C: cPeople}
 	orders  := &Collection{C: cOrder}
+	pizza  := &Collection{C: cPizza}
 	readPeople(cPeople)
 	readAdmins(cAdmins)
 	readOrder(cOrder)
-	// readPizzas(cPizza)
+	readPizzas(cPizza)
+	fmt.Println("main() -> pizza ->", pizza)
 	r := gin.Default()
 	r.LoadHTMLGlob("templates/*.html")
 	r.Static("/user/css", "./templates")
@@ -606,13 +608,25 @@ func main() {
 	/////////////////////////////////////// ROUTE USER/////////////////////////////////////////////////
 	routeUser := r.Group("/user")
 	{
+
 		routeUser.GET("/", func(c *gin.Context) {
-			c.HTML(http.StatusOK, "User.html", gin.H{
-				"title": "test",
-			})
+			cookieTOKEN, err := c.Cookie("token")
+			cookieEMAIL, _   := c.Cookie("email")
+			if err != nil {	
+				c.HTML(http.StatusOK, "User.html", gin.H{
+					"title": "User",
+				})
+			} else {
+				c.HTML(200, "accountUser.html", gin.H{
+					"email": cookieEMAIL,
+				})
+			}
+			fmt.Println(cookieTOKEN)
+			fmt.Println(cookieEMAIL)
 		})
 		routeUser.POST("/signUp", people.signUpUsers)
 		routeUser.POST("/login", orders.loginUser)
+		/////////////////////////////////////////////
 		routeUser.Use(CheckTokenValidation)
 		routeUser.GET("/logOut", logout)
 		routeUser.GET("/pizza", func(c *gin.Context) {
@@ -624,9 +638,19 @@ func main() {
 		routeUser.GET("/getPizza", func(c *gin.Context) {
 			orderPizzas := order.Pizzas
 				c.JSON(200, orderPizzas)
-				fmt.Println("routerUser.GET() ->", orderPizzas)
+				fmt.Println("getPizza.GET() ->", orderPizzas)
 
 		})
+		routeUser.GET("/choosePizzas", func(c *gin.Context) {
+			pizza := Pizza {
+				Name : "Pizza",
+				Size : "Size",
+			}
+				c.JSON(200, pizza)
+				fmt.Println("choosePizzas.GET() ->", pizza)
+
+		})
+		routeUser.DELETE("/pizzaDelete", orders.deletePizzaFromTrash)
 		routeUser.POST("/orderPizza", orders.pizzaOrder)
 	}
 	/////////////////////////////////////////////////////////////////////////////////////////////////////
