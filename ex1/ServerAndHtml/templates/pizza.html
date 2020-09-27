@@ -40,7 +40,7 @@
         $.get( "/user/getPizza", function( data ) {
             $('#brd').empty()
             $.each(data, function(k)  {
-                $("#brd").append("<tr><td>"+data[k].name+"<td><br/><td>"+data[k].size+"<td><br/><button class='delete' data-pizza='"+data[k].name+"'><img src='https://img.icons8.com/color/16/000000/delete-sign.png'></button></tr>");
+                $("#brd").append("<tr><td>"+data[k].name+"<td><br/><td>"+data[k].price+"<td><br/><button class='delete' data-pizza='"+data[k].name+"'><img src='https://img.icons8.com/color/16/000000/delete-sign.png'></button></tr>");
             });
             console.log(data);
         });
@@ -63,17 +63,17 @@
         $.get( "/user/choosePizzas", function( data ) {
             $('#brd1').empty()
             $.each(data, function(k)  {
-                $("#brd1").append("<tr><td>"+data.name+"<td><br/><td>"+data.size+"<td><br/><button class='choosePizza' data-name='"+data.name+"' data-size='"+data.size+"'>orderPizza</button></tr>");
+                $("#brd1").append("<tr><td>"+data.name+"<td><br/><td>"+data.price+"<td><br/><button class='choosePizza' data-name='"+data.name+"' data-price='"+data.price+"'>orderPizza</button></tr>");
             });
             console.log(data);
         });
     }
     $('#brd1').on('click', '.choosePizza', function() {   
         var name = $(this).attr("data-name"); 
-        var size = $(this).attr("data-size");
+        var price = $(this).attr("data-price");
         var data = {    
             "name": name,  
-            "size": size,  
+            "price": price,  
         }
         $.ajax({   
                 url: '/user/orderPizza',    
@@ -83,10 +83,9 @@
                 dataType: "json", 
                 success : function(data) {
                     console.log(data.name)
-                    console.log(data.size)
+                    console.log(data.price)
                 },
             }); 
-        console.log(data) 
     });
     
     //pop up

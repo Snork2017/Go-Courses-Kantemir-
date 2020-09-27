@@ -2,6 +2,8 @@
 <!DOCTYPE html>
 <html>
 <head>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script> 
+    <link rel="stylesheet" href="http://dimsemenov.com/plugins/magnific-popup/site-assets/all.min.css?v=0.9.9">
 	<title></title>
 </head>
 <body>
@@ -9,12 +11,72 @@
 		<p>ПРИВЕТ {{.email}}</p>
 	</div>
 	<div>
-		<p>Token: {{.token}}</p>
-	</div>
-	<div>
-		<p>Token: {{.person}}</p>
+		<button class="popup-with-form1" href="#test-form1">AddPizza</button>
+        <div id="test-form1" class="white-popup-block mfp-hide"> 
+            <select id="pizzaName">
+                <option>Маргарита</option>
+                <option>4 сыра</option>
+                <option>Вегетарианская</option>
+            </select>
+            <input id="pizzaPrice">
+            <span>Грн</span>
+            <button onclick="getPizza()">Добавить</button>
+        </div>
 	</div>
 </body>
+<script src="http://dimsemenov.com/plugins/magnific-popup/dist/jquery.magnific-popup.min.js?v=0.9.9"></script>
 </html>
+<style>
+
+</style>
+<script>
+	function getPizza(argument) {
+		var data = {
+			"pizzaName": $('#pizzaName').val(),
+			"pizzaPrice": $('#pizzaPrice').val(),
+		}
+		
+		console.log(data)
+	}
+	$(document).ready(function() {
+        $('.close').click(function() {
+            $.magnificPopup.close();
+        });
+    });
+
+    $(document).ready(function() {
+
+	    $('.popup-with-form1').magnificPopup({
+	        type: 'inline',
+	        preloader: false,
+	        focus: '#E-Mail',
+	        callbacks: {
+	            beforeOpen: function() {
+	                if($(window).width() < 700) {
+	                    this.st.focus = false;
+	                } else {
+	                    this.st.focus = '#E-Mail';
+	                }
+	            }
+	        }
+	    });
+	});
+
+    // function addPizza() {
+
+    // 	$.ajax({   
+    //         url: '/admin/addPizza',    
+    //         type: 'POST', 
+    //         data: JSON.stringify(data),
+    //         contentType: "application/json; charset=utf-8",  
+    //         dataType: "json", 
+    //         success : function(data) {
+    //             console.log(data.name)
+    //             console.log(data.size)
+    //         },
+    //     }); 
+    //     console.log(data) 
+    // }
+</script>
 
 

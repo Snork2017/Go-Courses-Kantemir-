@@ -37,7 +37,7 @@
         $.get( "/user/getPizza", function( data ) {
             $('#brd').empty()
             $.each(data, function(k,v)  {
-                $("#brd").append("<tr><td>"+data[k].name+"<td><br/><td>"+data[k].size+"<td><br/></tr>");
+                $("#brd").append("<tr><td>"+data[k].name+"<td><br/><td>"+data[k].price+"<td><br/></tr>");
             });
             console.log(data);
         });
@@ -81,3 +81,12 @@
     });
     
     </script>   
+
+
+    
+
+        
+
+        
+
+        

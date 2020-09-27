@@ -69,8 +69,8 @@ var order Order
 var mySigningKey = []byte("MySeretToken")
 
 type Pizza struct {
-	Name string `bson:"name" form:"name" json:"name"`
-	Size string `bson:"size" form:"size" json:"size"`
+	Name   string 	`bson:"name" form:"name" json:"name"`
+	Price  int64	`bson:"price" form:"price" json:"price,string,omitempty"`
 }
 
 type Order struct {
@@ -107,7 +107,7 @@ func (pizza *Collection) pizzaOrder(c *gin.Context){
 	}
 	err = c.BindJSON(&requestPizza)
 	if err != nil {
-		fmt.Println("orderPizza() ->", err.Error())
+		fmt.Println("orderPizza() 110 ->", err.Error())
 		return
 	}
 	filterPizza := make(map[string]interface{})
@@ -117,7 +117,7 @@ func (pizza *Collection) pizzaOrder(c *gin.Context){
 		fmt.Println("c.FIND().ONE() ->", err.Error())
 		orderPizza := Pizza{
 			Name: requestPizza.Name,
-			Size: requestPizza.Size,
+			Price: requestPizza.Price,
 		}
 		pizzas := []Pizza{}
 		order.OwnerEmail = emailCookie
@@ -133,7 +133,7 @@ func (pizza *Collection) pizzaOrder(c *gin.Context){
 	} else {
 		orderPizza := Pizza{
 			Name: requestPizza.Name,
-			Size: requestPizza.Size,
+			Price: requestPizza.Price,
 		}
 		ordPizzas := order.Pizzas
 		ordPizzas = append(ordPizzas, orderPizza)
@@ -157,7 +157,7 @@ func (pizza *Collection) pizzaOrder(c *gin.Context){
 		fmt.Println(err)
 		return
 	} else {
-		fmt.Println("ok!", requestPizza.Name, requestPizza.Size)
+		fmt.Println("ok!", requestPizza.Name, requestPizza.Price)
 	}
 	resultsPizzas = append(resultsPizzas, requestPizza)
 }
@@ -586,8 +586,9 @@ func main() {
 	fmt.Println("main() -> pizza ->", pizza)
 	r := gin.Default()
 	r.LoadHTMLGlob("templates/*.html")
+	r.Static("./admin/png", "./templates")
 	r.Static("/user/css", "./templates")
-	r.Static("./css", "./templates")
+	r.Static("./admin/css", "./templates")
 	r.GET("/page", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "page.html", gin.H{
 			"title": "test",
@@ -644,7 +645,7 @@ func main() {
 		routeUser.GET("/choosePizzas", func(c *gin.Context) {
 			pizza := Pizza {
 				Name : "Pizza",
-				Size : "Size",
+				Price : 8,
 			}
 				c.JSON(200, pizza)
 				fmt.Println("choosePizzas.GET() ->", pizza)
