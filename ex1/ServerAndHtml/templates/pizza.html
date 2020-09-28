@@ -61,9 +61,9 @@
     });
     function choosePizza() {   
         $.get( "/user/choosePizzas", function( data ) {
-            $('#brd1').empty()
-            $.each(data, function(k)  {
-                $("#brd1").append("<tr><td>"+data.name+"<td><br/><td>"+data.price+"<td><br/><button class='choosePizza' data-name='"+data.name+"' data-price='"+data.price+"'>orderPizza</button></tr>");
+            $("brd1").empty();
+            $.each(data, function()  {
+                $("#brd1").append("<tr><td>"+data.Name+"<td><br/><td>"+data.Price+"<td><br/><button class='choosePizza' data-name='"+data.Name+"' data-price='"+data.Price+"'>orderPizza</button></tr>");
             });
             console.log(data);
         });
@@ -75,6 +75,7 @@
             "name": name,  
             "price": price,  
         }
+        console.log(data)
         $.ajax({   
                 url: '/user/orderPizza',    
                 type: 'POST', 

@@ -13,6 +13,7 @@
 	<div>
 		<button class="popup-with-form1" href="#test-form1">AddPizza</button>
         <div id="test-form1" class="white-popup-block mfp-hide"> 
+        	<h1>Добавление пиццы в магазин для пользователей</h1>
             <select id="pizzaName">
                 <option>Маргарита</option>
                 <option>4 сыра</option>
@@ -20,7 +21,7 @@
             </select>
             <input id="pizzaPrice">
             <span>Грн</span>
-            <button onclick="getPizza()">Добавить</button>
+            <button onclick="sendPizza()">Добавить</button>
         </div>
 	</div>
 </body>
@@ -30,12 +31,18 @@
 
 </style>
 <script>
-	function getPizza(argument) {
+	function sendPizza() {
 		var data = {
-			"pizzaName": $('#pizzaName').val(),
-			"pizzaPrice": $('#pizzaPrice').val(),
+			"name": $('#pizzaName').val(),
+			"price": $('#pizzaPrice').val(),
 		}
-		
+		$.ajax({   
+            type: "POST",   
+            url: "/admin/sendPizza",   
+            data: JSON.stringify(data), 
+            contentType: "application/json; charset=utf-8",   
+            dataType: "json",          
+    	});
 		console.log(data)
 	}
 	$(document).ready(function() {

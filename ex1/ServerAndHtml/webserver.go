@@ -17,8 +17,8 @@ import (
 
 type Person struct {
 	//ID       uint64 `json: "id, omitempty"`
-	Email    string `bson:"email" form:"email" json:"email"`
-	Password string `bson:"password" form:"password" json:"password"`
+	Email    string `bson:"email" json:"email"`
+	Password string `bson:"password" json:"password"`
 	Hash     string `json: "hash, omitempty"`
 	// ID
 	// Firstname  string
@@ -27,32 +27,14 @@ type Person struct {
 
 type Admin struct {
 	//ID       uint64 `json: "id, omitempty"`
-	Email    string `bson:"email" form:"email" json:"email"`
-	Password string `bson:"password" form:"password" json:"password"`
+	Email    string `bson:"email" json:"email"`
+	Password string `bson:"password" json:"password"`
 	Hash     string `json: "hash, omitempty"`
 	// ID
 	// Firstname  string
 	// SecondName string
 }
 
-func (pizza *Collection)deletePizzaFromTrash(c *gin.Context) {
-	var p = pizza.C
-	var deletePizza interface{}
-	err := c.BindJSON(&deletePizza)
-	if err != nil {
-		fmt.Println("deletePizzaFromTrash() ->", err.Error())
-		return
-	}
-	fmt.Println("deletePizza  ->",	deletePizza)
-	filter := bson.M{"pizzas.name": deletePizza}
-	err = p.Remove(filter)
-
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
-}
 
 
 var session *mgo.Session
@@ -65,20 +47,45 @@ var resultsPizzas []Pizza
 var requestPizza Pizza
 var resultsOrder []Order
 var order Order
+var pizzaAdm Pizza
 
 var mySigningKey = []byte("MySeretToken")
 
+type Collection struct {
+	C *mgo.Collection
+}
+
+type Session struct {
+	S *mgo.Session
+}
+
 type Pizza struct {
-	Name   string 	`bson:"name" form:"name" json:"name"`
-	Price  int64	`bson:"price" form:"price" json:"price,string,omitempty"`
+	Name   string 	`bson:"name" json:"name"`
+	Price  int64	`bson:"price" json:"price,string,omitempty"`
 }
 
 type Order struct {
-	Pizzas []Pizza    `bson:"pizzas" form:"pizzas" json:"pizzas"`
-	OwnerEmail string `bson:"ownerEmail" form:"ownerEmail" json:"ownerEmail"`
+	Pizzas []Pizza    `bson:"pizzas" json:"pizzas"`
+	OwnerEmail string `bson:"ownerEmail" json:"ownerEmail"`
 }
 
+func (pizza *Collection)deletePizzaFromTrash(c *gin.Context) {
+	var p = pizza.C
+	var deletePizza interface{}
+	err := c.BindJSON(&deletePizza)
+	if err != nil {
+		fmt.Println("deletePizzaFromTrash() ->", err.Error())
+		return
+	}
+	fmt.Println("deletePizza  ->",	deletePizza)
+	filter := bson.M{Order : {"$in : [pizzas.name]"}: deletePizza}
+	err = p.Remove(filter)
 
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+}
 
 func readPizza(c *mgo.Collection, emailCookie string) {
 	order = Order{}
@@ -172,13 +179,7 @@ func (pizza *Collection) pizzaOrder(c *gin.Context){
 // 	name string
 // }
 
-type Collection struct {
-	C *mgo.Collection
-}
 
-type Session struct {
-	S *mgo.Session
-}
 
 
 // var count uint64 = 0
@@ -426,16 +427,11 @@ func loginAdmin(c *gin.Context) {
 		return
 	} else {
 		fmt.Println(http.StatusOK, "Admin: %+v\n", admin)
-		// cookie, err := c.Cookie("token")
-		// if err != nil {
-		// c.SetCookie("token", token, 3600, "/", "localhost", false, false)
+		c.SetCookie("token", token, 3600, "/", "localhost", false, false)
+		c.SetCookie("email", eMail, 3600, "/", "localhost", false, false)
 		c.HTML(http.StatusOK, "accountAdmin.html", gin.H{
 			"email": eMail,
-			"token": token,
-			"admin": admin,
 		})
-		// c.String(http.StatusOK, "Cookie: %+v\n", cookie)
-		// }
 	}
 
 }
@@ -532,14 +528,16 @@ func (people *Collection) signUpAdmins(c *gin.Context) {
 	readAdmins(p)
 }
 
-func showData(c *gin.Context) {
-	var data interface{}
-	c.BindJSON(&data)
-	c.JSON(200, data)
-	fmt.Println("DATA", data)
+func savePizzaAdmin(c *gin.Context) {
+	err := c.BindJSON(&pizzaAdm)
+	if err != nil {
+		fmt.Println("savePizzaAdmin() =>", err.Error())
+		return 
+	}
+	fmt.Println(pizzaAdm)
 }
 
-func CheckTokenValidation(c *gin.Context) {
+func CheckTokenValidationUsers(c *gin.Context) {
   token, err := c.Cookie("token")
   if err != nil {
   	fmt.Println("c.Cookie() ->", err.Error())
@@ -548,10 +546,25 @@ func CheckTokenValidation(c *gin.Context) {
     })
     return
   }else {
-  	fmt.Println("c.Cookie() ->", token)
+  	fmt.Println("c.CookieUser() ->", token)
   }
   return
 }
+
+func CheckTokenValidationAdmins(c *gin.Context) {
+  token, err := c.Cookie("token")
+  if err != nil {
+  	fmt.Println("c.Cookie() ->", err.Error())
+    c.HTML(200, "/admin", gin.H{
+      "title": "authorisation", //IGNORE THIS
+    })
+    return
+  }else {
+  	fmt.Println("c.CookieAdmin() ->", token)
+  }
+  return
+}
+
 
 func logout(c *gin.Context) {
 	// Clear the cookie
@@ -586,15 +599,16 @@ func main() {
 	fmt.Println("main() -> pizza ->", pizza)
 	r := gin.Default()
 	r.LoadHTMLGlob("templates/*.html")
+	////////////////////////////////////////////////
 	r.Static("./admin/png", "./templates")
 	r.Static("/user/css", "./templates")
-	r.Static("./admin/css", "./templates")
+	r.Static("/admin/css", "./templates")
+	////////////////////////////////////////////////
 	r.GET("/page", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "page.html", gin.H{
 			"title": "test",
 		})
 	})
-	r.POST("/showData", showData)
 	/////////////////////////////////////// ROUTE ADMIN/////////////////////////////////////////////////
 	routeAdmins := r.Group("/admin")
 	{
@@ -603,8 +617,10 @@ func main() {
 				"title": "test",
 			})
 		})
-		routeAdmins.POST("/signUp", admins.signUpAdmins)
 		routeAdmins.POST("/login", loginAdmin)
+		routeAdmins.POST("/signUp", admins.signUpAdmins)
+		routeAdmins.Use(CheckTokenValidationAdmins)
+		routeAdmins.POST("/sendPizza", savePizzaAdmin)
 	}
 	/////////////////////////////////////// ROUTE USER/////////////////////////////////////////////////
 	routeUser := r.Group("/user")
@@ -628,7 +644,7 @@ func main() {
 		routeUser.POST("/signUp", people.signUpUsers)
 		routeUser.POST("/login", orders.loginUser)
 		/////////////////////////////////////////////
-		routeUser.Use(CheckTokenValidation)
+		routeUser.Use(CheckTokenValidationUsers)
 		routeUser.GET("/logOut", logout)
 		routeUser.GET("/pizza", func(c *gin.Context) {
 
@@ -644,11 +660,19 @@ func main() {
 		})
 		routeUser.GET("/choosePizzas", func(c *gin.Context) {
 			pizza := Pizza {
-				Name : "Pizza",
-				Price : 8,
+				Name : pizzaAdm.Name,
+				Price : pizzaAdm.Price,
 			}
-				c.JSON(200, pizza)
-				fmt.Println("choosePizzas.GET() ->", pizza)
+			m := make(map[string]interface{})
+			m["Name"] = pizza.Name
+			m["Price"] = pizza.Price
+			if m["Name"] != "" &&  m["Price"] != 0{
+				c.JSON(200, m)
+			} else {
+				fmt.Println("EmptyFields!")
+				return 	
+			}
+			fmt.Println("choosePizzas.GET() ->", m)	
 
 		})
 		routeUser.DELETE("/pizzaDelete", orders.deletePizzaFromTrash)
