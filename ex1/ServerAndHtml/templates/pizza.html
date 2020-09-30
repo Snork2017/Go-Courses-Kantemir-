@@ -40,12 +40,13 @@
         $.get( "/user/getPizza", function( data ) {
             $('#brd').empty()
             $.each(data, function(k)  {
-                $("#brd").append("<tr><td>"+data[k].name+"<td><br/><td>"+data[k].price+"<td><br/><button class='delete' data-pizza='"+data[k].name+"'><img src='https://img.icons8.com/color/16/000000/delete-sign.png'></button></tr>");
+                $("#brd").append("<tr id = 'remove'><td>"+data[k].name+"<td><br/><td>"+data[k].price+"<td><br/><button class='delete' data-pizza='"+data[k].name+"'><img src='https://img.icons8.com/color/16/000000/delete-sign.png'></button></tr>");
             });
             console.log(data);
         });
     }
     $('#brd').on('click', '.delete', function() {   
+        var dataId = $(this).attr("data-id"); 
         var name = $(this).attr("data-pizza"); 
         console.log(name)
         $.ajax({   
@@ -58,6 +59,7 @@
                 console.log(data.name)
             },
         }); 
+        $("#remove").remove();
     });
     function choosePizza() {   
         $.get( "/user/choosePizzas", function( data ) {

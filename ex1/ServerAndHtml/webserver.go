@@ -69,21 +69,35 @@ type Order struct {
 	OwnerEmail string `bson:"ownerEmail" json:"ownerEmail"`
 }
 
+type DeletePizza struct{
+	PizzaName []string `json:"pizzaname"`
+}
+
 func (pizza *Collection)deletePizzaFromTrash(c *gin.Context) {
 	var p = pizza.C
-	var deletePizza interface{}
+	var deletePizza string
 	err := c.BindJSON(&deletePizza)
 	if err != nil {
 		fmt.Println("deletePizzaFromTrash() ->", err.Error())
 		return
 	}
+	for k := range order.Pizzas {
+			if order.Pizzas[k].Name == deletePizza {
+            	order.Pizzas[k] = order.Pizzas[len(order.Pizzas)-1]
+           		order.Pizzas = order.Pizzas[:len(order.Pizzas)-1]
+           		break
+        	}
+		fmt.Println(order.Pizzas[k].Name)
+	}
 	fmt.Println("deletePizza  ->",	deletePizza)
-	filter := bson.M{Order : {"$in : [pizzas.name]"}: deletePizza}
+	filter := bson.M{"pizzas.name" : deletePizza}
 	err = p.Remove(filter)
 
 	if err != nil {
 		fmt.Println(err)
 		return
+	} else {
+		fmt.Println("Removed pizza :", filter)
 	}
 }
 
