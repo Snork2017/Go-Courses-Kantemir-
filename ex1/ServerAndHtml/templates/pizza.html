@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-<html>
 <head>
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
     <link rel="stylesheet" href="http://dimsemenov.com/plugins/magnific-popup/site-assets/all.min.css?v=0.9.9">
@@ -38,7 +37,7 @@
     }
     function getPizza() {   
         $.get( "/user/getPizza", function( data ) {
-            $('#brd').empty()
+            $('#brd').empty();
             $.each(data, function(k)  {
                 $("#brd").append("<tr id = 'remove'><td>"+data[k].name+"<td><br/><td>"+data[k].price+"<td><br/><button class='delete' data-pizza='"+data[k].name+"'><img src='https://img.icons8.com/color/16/000000/delete-sign.png'></button></tr>");
             });
@@ -64,8 +63,8 @@
     function choosePizza() {   
         $.get( "/user/choosePizzas", function( data ) {
             $("brd1").empty();
-            $.each(data, function()  {
-                $("#brd1").append("<tr><td>"+data.Name+"<td><br/><td>"+data.Price+"<td><br/><button class='choosePizza' data-name='"+data.Name+"' data-price='"+data.Price+"'>orderPizza</button></tr>");
+            $.each(data, function(k)  {
+                $("#brd1").append("<tr><td>"+data[k].name+"<td><br/><td>"+data[k].price+"<td><br/><button class='choosePizza' data-name='"+data[k].name+"' data-price='"+data[k].price+"'>orderPizza</button></tr>");
             });
             console.log(data);
         });

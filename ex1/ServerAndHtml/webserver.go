@@ -6,13 +6,10 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
-	//"github.com/night-codes/mgo-ai"
 	"github.com/gin-gonic/gin"
-	"html/template"
 	"net/http"
 	"os"
 	"time"
-	// "github.com/gorilla/mux"
 )
 
 type Person struct {
@@ -35,22 +32,23 @@ type Admin struct {
 	// SecondName string
 }
 
-
+type PizzaAdm struct{
+	Name   string   `bson:"name" json:"name"`
+	Price  int64	`bson:"price" json:"price,string,omitempty"`
+}
 
 var session *mgo.Session
 var resultsPerson []Person
 var resultsAdmins []Admin
-var cachePeople = map[string]Person{}
-var tpl *template.Template
 var database string = "developer"
 var resultsPizzas []Pizza
 var requestPizza Pizza
 var resultsOrder []Order
 var order Order
-var pizzaAdm Pizza
-
 var mySigningKey = []byte("MySeretToken")
-
+var pizzaAdm PizzaAdm
+var resultsPizzaAdm []PizzaAdm
+var jsonPizza Pizza
 type Collection struct {
 	C *mgo.Collection
 }
@@ -58,6 +56,7 @@ type Collection struct {
 type Session struct {
 	S *mgo.Session
 }
+
 
 type Pizza struct {
 	Name   string 	`bson:"name" json:"name"`
@@ -69,10 +68,6 @@ type Order struct {
 	OwnerEmail string `bson:"ownerEmail" json:"ownerEmail"`
 }
 
-type DeletePizza struct{
-	PizzaName []string `json:"pizzaname"`
-}
-
 func (pizza *Collection)deletePizzaFromTrash(c *gin.Context) {
 	var p = pizza.C
 	var deletePizza string
@@ -81,22 +76,22 @@ func (pizza *Collection)deletePizzaFromTrash(c *gin.Context) {
 		fmt.Println("deletePizzaFromTrash() ->", err.Error())
 		return
 	}
-	for k := range order.Pizzas {
-			if order.Pizzas[k].Name == deletePizza {
-            	order.Pizzas[k] = order.Pizzas[len(order.Pizzas)-1]
-           		order.Pizzas = order.Pizzas[:len(order.Pizzas)-1]
-           		break
-        	}
-		fmt.Println(order.Pizzas[k].Name)
-	}
 	fmt.Println("deletePizza  ->",	deletePizza)
-	filter := bson.M{"pizzas.name" : deletePizza}
+	filter := bson.M{"pizzas.name" : deletePizza} //////////////////// A MISTAKE
 	err = p.Remove(filter)
 
 	if err != nil {
 		fmt.Println(err)
 		return
 	} else {
+		for k := range order.Pizzas {
+			if order.Pizzas[k].Name == deletePizza {
+            	order.Pizzas[k] = order.Pizzas[len(order.Pizzas)-1]
+           		order.Pizzas = order.Pizzas[:len(order.Pizzas)-1]
+           		break
+        	}
+			fmt.Println(order.Pizzas[k].Name)
+		}	
 		fmt.Println("Removed pizza :", filter)
 	}
 }
@@ -292,6 +287,20 @@ func CreateToken(userName string, userPassword string) (string, error) {
 	return token, nil
 }
 
+func readPizzaAdm(c *mgo.Collection) {
+	query := c.Find(bson.M{})
+	err := query.All(&resultsPizzaAdm)
+	if err != nil {
+		fmt.Println("query.All() ->", err)
+		return
+	}
+	for _, value := range resultsPizzaAdm{
+		fmt.Println(value)
+	}
+
+	fmt.Printf("\n")
+}
+
 func readPeople(c *mgo.Collection) {
 	query := c.Find(bson.M{})
 	err := query.All(&resultsPerson)
@@ -396,6 +405,21 @@ func bootstrapPeople(s *mgo.Session) *mgo.Collection {
 	return c
 }
 
+func bootstrapPizzaAdm(s *mgo.Session) *mgo.Collection {
+	c := s.DB(database).C("pizzaAdm")
+	index := mgo.Index{
+		Key:        []string{"name"},
+		Unique:     true,
+		Background: true,
+	}
+	err := c.EnsureIndex(index)
+	if err != nil {
+		fmt.Println("EnsureIndex() ->", err.Error())
+		return nil
+	}
+	return c
+}
+
 func bootstrapAdmins(s *mgo.Session) *mgo.Collection {
 	c := s.DB(database).C("admins")
 	index := mgo.Index{
@@ -408,7 +432,6 @@ func bootstrapAdmins(s *mgo.Session) *mgo.Collection {
 		fmt.Println("EnsureIndex() ->", err.Error())
 		return nil
 	}
-
 	return c
 }
 
@@ -542,13 +565,23 @@ func (people *Collection) signUpAdmins(c *gin.Context) {
 	readAdmins(p)
 }
 
-func savePizzaAdmin(c *gin.Context) {
-	err := c.BindJSON(&pizzaAdm)
+func (pizzaAdm *Collection)savePizzaAdmin(c *gin.Context) {
+	p := pizzaAdm.C
+	err := c.BindJSON(&jsonPizza)
 	if err != nil {
 		fmt.Println("savePizzaAdmin() =>", err.Error())
 		return 
 	}
-	fmt.Println(pizzaAdm)
+	err = p.Insert(
+		&PizzaAdm{Name: jsonPizza.Name, Price: jsonPizza.Price},
+	)
+	if err != nil {
+		fmt.Println(err)
+		return
+	} else {
+		fmt.Println("ok!")
+	}
+	readPizzaAdm(p)
 }
 
 func CheckTokenValidationUsers(c *gin.Context) {
@@ -602,14 +635,17 @@ func main() {
 	var cPeople = bootstrapPeople(session)
 	var cPizza 	= bootstrapPizza(session)
 	var cOrder 	= bootstrapOrder(session)
+	var cPizzaAdm = bootstrapPizzaAdm(session)
 	admins := &Collection{C: cAdmins}
 	people := &Collection{C: cPeople}
 	orders  := &Collection{C: cOrder}
 	pizza  := &Collection{C: cPizza}
+	savePizza := &Collection{C: cPizzaAdm}
 	readPeople(cPeople)
 	readAdmins(cAdmins)
 	readOrder(cOrder)
 	readPizzas(cPizza)
+	readPizzaAdm(cPizzaAdm)
 	fmt.Println("main() -> pizza ->", pizza)
 	r := gin.Default()
 	r.LoadHTMLGlob("templates/*.html")
@@ -634,7 +670,7 @@ func main() {
 		routeAdmins.POST("/login", loginAdmin)
 		routeAdmins.POST("/signUp", admins.signUpAdmins)
 		routeAdmins.Use(CheckTokenValidationAdmins)
-		routeAdmins.POST("/sendPizza", savePizzaAdmin)
+		routeAdmins.POST("/sendPizza", savePizza.savePizzaAdmin)
 	}
 	/////////////////////////////////////// ROUTE USER/////////////////////////////////////////////////
 	routeUser := r.Group("/user")
@@ -673,20 +709,8 @@ func main() {
 
 		})
 		routeUser.GET("/choosePizzas", func(c *gin.Context) {
-			pizza := Pizza {
-				Name : pizzaAdm.Name,
-				Price : pizzaAdm.Price,
-			}
-			m := make(map[string]interface{})
-			m["Name"] = pizza.Name
-			m["Price"] = pizza.Price
-			if m["Name"] != "" &&  m["Price"] != 0{
-				c.JSON(200, m)
-			} else {
-				fmt.Println("EmptyFields!")
-				return 	
-			}
-			fmt.Println("choosePizzas.GET() ->", m)	
+			c.JSON(200, resultsPizzaAdm)
+			fmt.Println("choosePizzas.GET() ->", resultsPizzaAdm)	
 
 		})
 		routeUser.DELETE("/pizzaDelete", orders.deletePizzaFromTrash)
