@@ -14,16 +14,22 @@
 		<button class="popup-with-form1" href="#test-form1">AddPizza</button>
         <div id="test-form1" class="white-popup-block mfp-hide"> 
         	<h1>Добавление пиццы в магазин для пользователей</h1>
-            <select id="pizzaName">
-                <option>Маргарита</option>
-                <option>4 сыра</option>
-                <option>Вегетарианская</option>
+            <select onclick="addPizzaPrice()" id="pizzaName">
+                <option value="МаргаритаL">Маргарита L</option> 
+                <option value="МаргаритаXL">Маргарита XL</option>
+                <option value="4 сыра L">4 сыра L</option>
+                <option value="4 сыра XL">4 сыра XL</option>
+                <option value="Вегетарианская L">Вегетарианская L</option>
+                <option value="Вегетарианская XL">Вегетарианская XL</option>
             </select>
-            <input id="pizzaPrice">
+            <input id="pizzaPrice" readonly>
             <span>Грн</span>
-            <button onclick="sendPizza()">Добавить</button>
+            <button onclick="sendPizza()" >Добавить</button>
         </div>
 	</div>
+	<form action="/admin/">  
+        <button onclick="logOut()">Log Out</button>
+    </form>
 </body>
 <script src="http://dimsemenov.com/plugins/magnific-popup/dist/jquery.magnific-popup.min.js?v=0.9.9"></script>
 </html>
@@ -31,6 +37,31 @@
 
 </style>
 <script>
+	function addPizzaPrice() {
+		var pizzaPrice = document.getElementById("pizzaPrice")
+		if(document.getElementById('pizzaName').value == "МаргаритаL") {
+     		pizzaPrice.value = 80;
+		}
+		if(document.getElementById('pizzaName').value == "МаргаритаXL") {
+     		pizzaPrice.value = 140;
+		}
+		if(document.getElementById('pizzaName').value == "4 сыра L") {
+     		pizzaPrice.value = 99;
+		}
+		if(document.getElementById('pizzaName').value == "4 сыра XL") {
+     		pizzaPrice.value = 160;
+		}
+		if(document.getElementById('pizzaName').value == "Вегетарианская L") {
+     		pizzaPrice.value = 55;
+		}
+		if(document.getElementById('pizzaName').value == "Вегетарианская XL") {
+     		pizzaPrice.value = 130;
+		}
+		console.log(pizzaPrice.value)
+	}
+	function logOut() {
+        $.get( "/admin/logOut")
+    }
 	function sendPizza() {
 		var data = {
 			"name": $('#pizzaName').val(),

@@ -52,11 +52,15 @@
                 </fieldset>
             </div>
         </div>
-        <!-- SHOW PEOPLE -->
-        <!-- -------------------------------------------------------------------->
-<!--             <form>
-                <input type="button" name="ShowUsers" value="ShowUsers" onclick="lastRegisteredUser()">
-            </form> -->
+        <div>
+            <form action="/user">
+                <button>Страница Пользователей</button>
+            </form>
+             <form action="/page">
+                <button>На Главную</button>
+            </form>
+            {{.pin}}
+        </div>
     <script src="http://dimsemenov.com/plugins/magnific-popup/dist/jquery.magnific-popup.min.js?v=0.9.9"></script>
     </body> 
 </html> 

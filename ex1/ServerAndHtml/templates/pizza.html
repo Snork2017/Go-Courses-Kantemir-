@@ -8,22 +8,23 @@
     <form action="/user/">  
         <button onclick="logOut()">Log Out</button>
     </form>
-     <div>
+    <div>
         <button class="popup-with-form1" onclick="getPizza()" href="#test-form1">Корзина</button>
         <div id="test-form1" class="white-popup-block mfp-hide"> 
             <table>
-                <tbody id= "brd">
-                
+                <tbody id="brd">
+
                 </tbody>
             </table>
         </div>
     </div>
+    <form action='/user/pay' method='get'><button>Посмотреть заказ!</button></form>
     <div>
         <button class="popup-with-form" onclick="choosePizza()" href="#test-form">Выбрать Пиццу</button>
         <div id="test-form" class="white-popup-block mfp-hide"> 
             <table>
                 <tbody id= "brd1">
-                
+
                 </tbody>
             </table>
         </div>
@@ -39,11 +40,72 @@
         $.get( "/user/getPizza", function( data ) {
             $('#brd').empty();
             $.each(data, function(k)  {
-                $("#brd").append("<tr id = 'remove'><td>"+data[k].name+"<td><br/><td>"+data[k].price+"<td><br/><button class='delete' data-pizza='"+data[k].name+"'><img src='https://img.icons8.com/color/16/000000/delete-sign.png'></button></tr>");
+            $("#brd").append("<tr id = 'remove'><td id ='namePizza'>"+data[k].name+"</td><br/><td id='pricePizza'>"+data[k].price+"<td>ГРН</td><td><br/><button id='buttonPizza' class='delete' data-pizza='"+data[k].name+"'><img src='https://img.icons8.com/color/16/000000/delete-sign.png'></button><button data-price='"+data[k].price+"' data-name='"+data[k].name+"' class='check'>Подтвердить</button><button data-price='"+data[k].price+"' data-name='"+data[k].name+"' class='uncheck'>Отменить</button></tr>");
             });
-            console.log(data);
+            $("#brd").append("<input type='text' name='card' id='cardNumber'>Номер Карты</input><br><input type='text' name='addres' id='addres'>Адресс</input><br><button class='pay'>Подтвердить</button>");
         });
     }
+    $('#brd').on('click', '.pay', function() {
+        $(this).css("background", "green")
+        $(this).attr('disabled', true);
+        var data = {    
+            "cardnumber": $('#cardNumber').val(),
+            "addres": $('#addres').val(), 
+        }; 
+        console.log(data)
+        $.ajax({   
+            url: '/user/pay',    
+            type: 'POST', 
+            data: JSON.stringify(data), 
+            contentType: "application/json; charset=utf-8",   
+            dataType: "json",   
+            success : function(data) {
+                console.log(data.cardnumber)
+                console.log(data.addres)
+            },
+        });
+    });
+    $('#brd').on('click', '.check', function() { 
+        $(this).css("background", "green")
+        $(this).attr('disabled', true);
+        $(".uncheck").css("background", "buttonface")
+        $(".uncheck").attr('disabled', false);
+        var price = $(this).attr("data-price"); 
+        var name = $(this).attr("data-name")
+        console.log(price)
+        var data = {   
+            "name" :     name,
+            "price":     price,
+        }; 
+        console.log(data.name)
+        $.ajax({   
+            url: '/user/checkPizza',    
+            type: 'POST', 
+            data: JSON.stringify(data), 
+            contentType: "application/json; charset=utf-8",   
+            dataType: "json",   
+        });
+    });
+    $('#brd').on('click', '.uncheck', function() { 
+        $(this).css("background", "red")
+        $(this).attr('disabled', true);
+        $(".check").attr('disabled', false);
+        $(".check").css("background", "buttonface")
+        var price = $(this).attr("data-price"); 
+        var name = $(this).attr("data-name")
+        var data = {   
+            "name" :     name,
+            "price":     price,
+        }; 
+        console.log(data)
+        $.ajax({   
+            url: '/user/unCheckPizza',    
+            type: 'DELETE', 
+            data: JSON.stringify(data), 
+            contentType: "application/json; charset=utf-8",   
+            dataType: "json",   
+        });
+    });
     $('#brd').on('click', '.delete', function() {   
         var dataId = $(this).attr("data-id"); 
         var name = $(this).attr("data-pizza"); 
@@ -62,9 +124,9 @@
     });
     function choosePizza() {   
         $.get( "/user/choosePizzas", function( data ) {
-            $("brd1").empty();
+            $("#brd1").empty();
             $.each(data, function(k)  {
-                $("#brd1").append("<tr><td>"+data[k].name+"<td><br/><td>"+data[k].price+"<td><br/><button class='choosePizza' data-name='"+data[k].name+"' data-price='"+data[k].price+"'>orderPizza</button></tr>");
+                $("#brd1").append("<tr id='remove'><td>"+data[k].name+"<td><br/><td>"+data[k].price+"<td><br/><button class='choosePizza' data-name='"+data[k].name+"' data-price='"+data[k].price+"'>orderPizza</button></tr>");
             });
             console.log(data);
         });
@@ -78,16 +140,16 @@
         }
         console.log(data)
         $.ajax({   
-                url: '/user/orderPizza',    
-                type: 'POST', 
-                data: JSON.stringify(data),
-                contentType: "application/json; charset=utf-8",  
-                dataType: "json", 
-                success : function(data) {
-                    console.log(data.name)
-                    console.log(data.price)
-                },
-            }); 
+            url: '/user/orderPizza',    
+            type: 'POST', 
+            data: JSON.stringify(data),
+            contentType: "application/json; charset=utf-8",  
+            dataType: "json", 
+            success : function(data) {
+                console.log(data.name)
+                console.log(data.price)
+            },
+        });
     });
     
     //pop up
@@ -98,6 +160,18 @@
     });
 
     $(document).ready(function() {
+        $('.popup-with-form2').magnificPopup({
+            type: 'inline',
+            preloader: false,
+            focus: '#name',
+            callbacks: {
+                beforeOpen: function() {
+                    if($(window).width() < 700) {
+                        this.st.focus = false;
+                    }
+                }
+            }
+        });
 
         $('.popup-with-form1').magnificPopup({
             type: 'inline',
