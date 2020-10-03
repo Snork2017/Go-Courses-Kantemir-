@@ -42,6 +42,7 @@
             $.each(data, function(k)  {
             $("#brd").append("<tr id = 'remove'><td id ='namePizza'>"+data[k].name+"</td><br/><td id='pricePizza'>"+data[k].price+"<td>ГРН</td><td><br/><button id='buttonPizza' class='delete' data-pizza='"+data[k].name+"'><img src='https://img.icons8.com/color/16/000000/delete-sign.png'></button><button data-price='"+data[k].price+"' data-name='"+data[k].name+"' class='check'>Подтвердить</button><button data-price='"+data[k].price+"' data-name='"+data[k].name+"' class='uncheck'>Отменить</button></tr>");
             });
+            
             $("#brd").append("<input type='text' name='card' id='cardNumber'>Номер Карты</input><br><input type='text' name='addres' id='addres'>Адресс</input><br><button class='pay'>Подтвердить</button>");
         });
     }

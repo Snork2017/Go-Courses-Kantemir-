@@ -92,6 +92,34 @@ type Collection struct {
 	C *mgo.Collection
 }
 
+func paymentPizza(c *gin.Context) {
+	err := c.BindJSON(&checkDataUser)
+	if err != nil {
+		fmt.Println("deletePizzaFromTrash() ->", err.Error())
+		return
+	}
+	checkDataUserArray = append(checkDataUserArray, checkDataUser)
+	fmt.Println("checkDataUser =>", checkDataUser)
+	for k := range checkDataUserArray {
+		fmt.Println("checkDataUserArray =>", checkDataUserArray[k])
+	}
+	for k := range checkPizzaArray {
+		fmt.Println("checkPizzaArray =>", checkPizzaArray[k])
+	}
+	email, _ := c.Cookie("email")
+	payment := Payment{
+		Email:        email,
+		Status:       "Не оплачен",
+		OrderedPizza: checkPizzaArray,
+		DataUser:     checkDataUserArray,
+	}
+	paymentArray = append(paymentArray, payment)
+	fmt.Println(payment)
+	fmt.Println(paymentArray)
+	sum += checkPizza.Price
+	fmt.Println("Общая сумма", sum)
+}
+
 func checkOrderedPizza(c *gin.Context) {
 	err := c.BindJSON(&checkPizza)
 	if err != nil {
@@ -116,7 +144,7 @@ func unCheckOrderedPizza(c *gin.Context) {
 			break
 		}
 	}
-	fmt.Println("UNCHECKEDPIZZA =>", checkPizzaArray)
+	fmt.Println("UNCHECKEDPIZZA =>",checkPizzaArray)
 }
 
 func (pizza *Collection) deletePizzaFromTrash(c *gin.Context) {
@@ -776,13 +804,18 @@ func main() {
 				"orderSum": sum,
 			})
 		})
-		routeUser.GET("/getOrder", func(c *gin.Context) {
-				c.JSON(200, paymentArray)
-			
-		})
 		routeUser.GET("/pay", func(c *gin.Context) {
-			c.HTML(http.StatusOK, "pay.html", nil)
+			for k := range paymentArray {
+				c.HTML(http.StatusOK, "pay.html", gin.H{
+					"orderName":   paymentArray[k].Email,
+					"orderStatus": paymentArray[k].Status,
+					"orderPizza":  paymentArray[k].OrderedPizza,
+					"orderData":   paymentArray[k].DataUser,
+					"orderSum":    sum,
+				})
+			}
 		})
+		
 		routeUser.GET("/getPizza", func(c *gin.Context) {
 			orderPizzas := order.Pizzas
 			c.JSON(200, orderPizzas)
@@ -804,20 +837,4 @@ func main() {
 	if err1 != nil {
 		panic(err1)
 	}
-}
-
-func paymentPizza(c *gin.Context) {
-	err := c.BindJSON(&checkDataUser)
-	if err != nil {
-		fmt.Println("deletePizzaFromTrash() ->", err.Error())
-		return
-	}
-	email, _ := c.Cookie("email")
-			payment := Payment{
-				Email:        email,
-				Status:       "Не оплачен",
-				OrderedPizza: checkPizzaArray,
-				DataUser:     checkDataUserArray,
-			}
-	paymentArray = append(paymentArray, payment)
 }

@@ -1,55 +1,20 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
-	<link rel="stylesheet" href="http://dimsemenov.com/plugins/magnific-popup/site-assets/all.min.css?v=0.9.9">
 	<title></title>
 </head>
 <body>
-	<button class="popup-with-form" onclick="getData()" href="#test-form">Посмотреть заказ</button>
-        <div id="test-form" class="white-popup-block mfp-hide"> 
-            <table>
-                <tbody id="brd">
-
-                </tbody>
-            </table>
-        </div>
-    </div>
-	<div>
+		<tr>
+			<td>{{.orderName}}</td><br>
+			<td>{{.orderStatus}}</td><br>
+			<td>{{.orderPizza}}</td><br>
+			<td>{{.orderData}}</td><br>
+			<td>{{.orderSum}}</td><br>
+		</tr>
+		<button>Оплатить</button>
 		<form action="/user/pizza">
 			<button>Вернуться назад</button>
 		</form>
 	</div>
 </body>
 </html>
-<script src="http://dimsemenov.com/plugins/magnific-popup/dist/jquery.magnific-popup.min.js?v=0.9.9"></script>
-<script>
-	function getData(){
-		$.get( "/user/getOrder", function(data) {
-	    $('#brd').empty();
-	    $.each(data, function(k)  {
-			$("#brd").append("<tr><td>Заказ на имя:'"+data[k].email+"'</td><br><td>Статус заказа:{{ .orderStatus}}</td><br><td>Пиццы к оплате:{{ .orderPizza}}</td><br><td>Адресс и номер карты:{{ .orderData}}</td><br><td>Сума к оплате заказа:{{ .orderSum}}</td><br><button>Оплатить</button></tr>")
-			});
-		});
-	}
-	$(document).ready(function() {
-        $('.close').click(function() {
-            $.magnificPopup.close();
-        });
-    });
-
-    $(document).ready(function() {
-         $('.popup-with-form').magnificPopup({
-            type: 'inline',
-            preloader: false,
-            focus: '#name',
-            callbacks: {
-                beforeOpen: function() {
-                    if($(window).width() < 700) {
-                        this.st.focus = false;
-                    }
-                }
-            }
-        });
-    });
-</script>
